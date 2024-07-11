@@ -18,22 +18,21 @@ This project aims to detect cricket balls in images using a Convolutional Neural
 
 The project directory contains the following files and folders:
 
-Cricket_ball_detection/
-│
-├── Data/
-│ ├── train/
-│ │ ├── *.jpg
-│ ├── annotations.csv
-│ ├── image.png
-│
-├── env/
-│ ├── Scripts/
-│ │ ├── activate
-│
-├── main.py
-├── requirements.txt
-├── README.md
-
+Cricket_ball_detection/ <br />
+│ <br />
+├── Data/ <br />
+│ ├── train/ <br />
+│ │ ├── *.jpg <br />
+│ ├── annotations.csv <br />
+│ ├── image.png <br />
+│ <br />
+├── env/ <br />
+│ ├── Scripts/ <br />
+│ │ ├── activate <br />
+│ <br />
+├── main.py <br />
+├── requirements.txt <br />
+├── README.md <br />
 
 - `Data/train/`: Contains training images.
 - `Data/annotations.csv`: Contains bounding box annotations for the training images.
