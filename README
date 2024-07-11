@@ -4,15 +4,15 @@ This project aims to detect cricket balls in images using a Convolutional Neural
 
 ## Table of Contents
 - [Cricket Ball Detection](#cricket-ball-detection)
-  - [Table of Contents](#table-of-contents)
-  - [Project Structure](#project-structure)
-  - [Installation](#installation)
-  - [Usage](#usage)
-    - [Training the Model](#training-the-model)
-    - [Detecting the Ball](#detecting-the-ball)
-  - [Results](#results)
-  - [Acknowledgements](#acknowledgements)
-  - [License](#license)
+- [Table of Contents](#table-of-contents)
+- [Project Structure](#project-structure)
+- [Installation](#installation)
+- [Usage](#usage)
+  - [Training the Model](#training-the-model)
+  - [Detecting the Ball](#detecting-the-ball)
+- [Results](#results)
+- [Acknowledgements](#acknowledgements)
+- [License](#license)
 
 ## Project Structure
 
