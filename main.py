@@ -230,6 +230,86 @@ def build_cnn_model():
     model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
     return model
 
+def load_image(image_path):
+    """
+    Load an image in grayscale.
+
+    Parameters:
+    image_path (str): Path to the image file.
+
+    Returns:
+    np.array: Loaded image in grayscale.
+    """
+    img = cv2.imread(image_path, 0)
+    if img is None:
+        raise ValueError(f"Error: Unable to load image at {image_path}")
+    return img
+
+def extract_positive_patch(img, bbox):
+    """
+    Extract a positive image patch containing the ball.
+
+    Parameters:
+    img (np.array): Grayscale image from which to extract the patch.
+    bbox (tuple): Bounding box coordinates (x_min, y_min, x_max, y_max).
+
+    Returns:
+    np.array: Resized positive image patch.
+    """
+    x_min, y_min, x_max, y_max = bbox
+    patch = img[int(y_min):int(y_max), int(x_min):int(x_max)]
+    patch = cv2.resize(patch, (25, 25), interpolation=cv2.INTER_AREA)
+    return patch
+
+def extract_negative_patch(img, bbox):
+    """
+    Extract a random negative image patch that does not contain the ball.
+
+    Parameters:
+    img (np.array): Grayscale image from which to extract the patch.
+    bbox (tuple): Bounding box coordinates (x_min, y_min, x_max, y_max).
+
+    Returns:
+    np.array: Resized negative image patch.
+    """
+    height, width = img.shape
+    x_min, y_min, x_max, y_max = bbox
+
+    while True:
+        rand_x = np.random.randint(0, width - 25)
+        rand_y = np.random.randint(0, height - 25)
+
+        # Ensure the negative patch does not overlap significantly with the ball
+        if not (x_min < rand_x < x_max and y_min < rand_y < y_max):
+            patch = img[rand_y:rand_y+25, rand_x:rand_x+25]
+            patch = cv2.resize(patch, (25, 25), interpolation=cv2.INTER_AREA)
+            return patch
+
+def extract_positive_samples(image_dir, annotations_df):
+    """
+    Extract positive samples (patches containing the ball) from images.
+
+    Parameters:
+    image_dir (str): Directory containing image files.
+    annotations_df (pd.DataFrame): DataFrame with annotations for image files.
+
+    Returns:
+    tuple: A tuple containing lists of positive image patches and their labels.
+    """
+    positive_images = []
+    positive_labels = []
+    
+    for _, row in annotations_df.iterrows():
+        image_path = os.path.join(image_dir, row['filename'])
+        img = load_image(image_path)
+        
+        bbox = (row['xmin'], row['ymin'], row['xmax'], row['ymax'])
+        positive_patch = extract_positive_patch(img, bbox)
+        positive_images.append(positive_patch)
+        positive_labels.append(1)  # 1 means ball is present
+
+    return positive_images, positive_labels
+
 def prepare_data_for_cnn(image_dir, annotations_df):
     """
     Prepare data for training the CNN model by extracting image patches and labels.
@@ -241,23 +321,34 @@ def prepare_data_for_cnn(image_dir, annotations_df):
     Returns:
     tuple: A tuple containing the images array and labels array.
     """
-    images = []
-    labels = []
+    images, labels = [], []
     
-    # Read annotations and prepare dataset
+    # Extract positive samples
+    positive_images, positive_labels = extract_positive_samples(image_dir, annotations_df)
+    images.extend(positive_images)
+    labels.extend(positive_labels)
+
+    # Calculate the number of positive samples
+    num_positive_samples = len(positive_labels)
+
+    # Generate random negative samples (not containing the ball)
     for _, row in annotations_df.iterrows():
         image_path = os.path.join(image_dir, row['filename'])
-        img = cv2.imread(image_path, 0)
-        
-        x_min, y_min, x_max, y_max = row['xmin'], row['ymin'], row['xmax'], row['ymax']
-        patch = img[int(y_min):int(y_max), int(x_min):int(x_max)]
-        patch = cv2.resize(patch, (25, 25), interpolation=cv2.INTER_AREA)
-        images.append(patch)
-        labels.append(1)  # 1 means ball is present
+        img = load_image(image_path)
+
+        # Extract positive bounding box
+        bbox = (row['xmin'], row['ymin'], row['xmax'], row['ymax'])
+
+        num_generated_negatives = 0
+        while num_generated_negatives < num_positive_samples // len(annotations_df):
+            negative_patch = extract_negative_patch(img, bbox)
+            images.append(negative_patch)
+            labels.append(0)  # 0 means no ball present
+            num_generated_negatives += 1
 
     images = np.array(images).reshape(-1, 25, 25, 1) / 255.0
     labels = np.array(labels)
-    
+
     return images, labels
 
 def train_cnn_model(model, images, labels):
@@ -288,13 +379,18 @@ def get_thresholds_for_color(color):
     list: List of HSV thresholds for color detection.
     """
     if color.lower() == 'red':
-        return [np.array([0, 0, 200]), np.array([180, 50, 255]),
-                np.array([0, 0, 200]), np.array([180, 50, 255])]
+        return [
+            np.array([0, 70, 50]), np.array([10, 255, 255]),   # Lower red range
+            np.array([170, 70, 50]), np.array([180, 255, 255]) # Upper red range
+        ]
     elif color.lower() == 'white':
-        return [np.array([0, 0, 230]), np.array([180, 20, 255]),
-                np.array([0, 0, 230]), np.array([180, 20, 255])]
+        return [
+            np.array([0, 0, 200]), np.array([180, 50, 255]),
+            np.array([0, 0, 200]), np.array([180, 50, 255])
+        ]
     else:
         raise ValueError("Color not recognized. Please use 'red' or 'white'.")
+
 
 def main():
     """
@@ -320,7 +416,7 @@ def main():
     example_image_path = 'Data/test.jpg'  # Replace with the path to an example image
     
     # Get thresholds for detecting a red ball
-    thresholds = get_thresholds_for_color('white')
+    thresholds = get_thresholds_for_color('red')
     
     # Detect the ball in the image
     detect_ball_in_image(example_image_path, cnn_model, thresholds)
