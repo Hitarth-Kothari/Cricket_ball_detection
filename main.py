@@ -413,10 +413,10 @@ def main():
     train_cnn_model(cnn_model, images, labels)
     
     # Detect the ball in an example image
-    example_image_path = 'Data/test.jpg'  # Replace with the path to an example image
+    example_image_path = 'Data/test-main.jpg'  # Replace with the path to an example image
     
     # Get thresholds for detecting a red ball
-    thresholds = get_thresholds_for_color('red')
+    thresholds = get_thresholds_for_color('white')
     
     # Detect the ball in the image
     detect_ball_in_image(example_image_path, cnn_model, thresholds)
